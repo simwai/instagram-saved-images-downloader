@@ -4,12 +4,14 @@ const randomUseragent = require('random-useragent')
 const fs = require('fs')
 
 const config = require('./config')
-const useragent = randomUseragent.getRandom();
+const useragent = randomUseragent.getRandom()
+
+const outputPaths = []
+const albumUrlTexts = [];
 
 (async () => {
   const browser = await chromium.launch({ headless: false, userAgent: useragent })
-  const context = await browser.newContext()
-  const page = await context.newPage()
+  const page = await browser.newPage()
   await page.goto('https://instagram.com//')
   await page.screenshot({ path: 'screenshots/latest-screenshot.png' })
 
@@ -36,27 +38,22 @@ const useragent = randomUseragent.getRandom();
   const loginFailed1 = await page.$('text=Bitte warte einige')
   const loginFailed2 = await page.$('text=Wir konnten keine Verbindung zu Instagram herstellen.')
 
-  if (!loginFailed1 || !loginFailed2) {
+  if (loginFailed1 || loginFailed2) {
     // TODO add new job in order to try it later again, max tries 5 before end
     console.log('login failed')
     return
   }
 
   await page.waitForTimeout(3000)
-  await page.click('text=Jetzt nicht')
-  await page.waitForTimeout(3000)
 
   try {
-    const notificationQuestion = await page.$('text=Jetzt nicht')
-
-    if (notificationQuestion) {
-      await page.click('text=Jetzt nicht')
-    }
+    await tryClick(page, "text='Jetzt nicht'")
+    await tryClick(page, "text='Jetzt nicht'")
   } catch (error) {
     console.log(error)
+    return
   }
 
-  await page.waitForTimeout(3000)
   await page.click(':nth-match(.Fifk5, 5) img')
 
   await page.waitForTimeout(3000)
@@ -80,44 +77,126 @@ const useragent = randomUseragent.getRandom();
     if (!fs.existsSync(outputFullPath)) {
       fs.mkdirSync(outputFullPath)
     }
+
+    outputPaths.push(outputFullPath)
   }
+
+  await scrollToBottom(page)
 
   const albumUrls = await page.$$('.Nt8m2 > a')
 
-  for (const albumUrl of albumUrls) {
-    const albumUrlText = await albumUrl.textContent()
+  for (let counter = 0; counter < albumUrls.length; counter++) {
+    const albumUrlText = await albumUrls[counter].getAttribute('href')
     console.log(albumUrlText)
+
+    albumUrlTexts.push(albumUrlText)
+  }
+
+  for (let counter = 0; counter < albumUrlTexts.length; counter++) {
+    const albumUrlText = 'https://www.instagram.com' + albumUrlTexts[counter]
+
     await page.goto(albumUrlText)
-    const previewImages = await page.$$('.v1Nh3.kIKUG._bz0w > a')
+    await page.waitForSelector('.v1Nh3.kIKUG._bz0w > a')
+
+    await scrollToBottom(page)
+
+    // const previewImages = await page.$$('.v1Nh3.kIKUG._bz0w > a')
+    const previewImages = await page.$$eval('.v1Nh3.kIKUG._bz0w > a', (elements) =>
+      elements.map((el) => el.href)
+    )
+    console.log(previewImages)
+
+    const outputPath = outputPaths[counter]
+    console.log(outputPaths[counter])
 
     for (const previewImage of previewImages) {
-      // TODO find out if i can put this as second parameter into imageUrls
-      const previewImageUrl = await previewImage.getAttribute('href')
-      console.log(previewImageUrl)
-
-      await page.goto(previewImageUrl)
-
-      const imageUrls = await page.$$('.KL4Bh > a')
-
-      for (const imageUrl of imageUrls) {
-        console.log(imageUrl)
-
-        let imageUrlResponse
-
-        try {
-          imageUrlResponse = await needle('get', imageUrl)
-        } catch (error) {
-          console.log(error)
-          // TODO be aware will not end the whole loop, fix that
-          return
-        }
-
-        if (imageUrlResponse) {
-          console.log(imageUrlResponse)
-        }
-      }
+      await page.goto(previewImage)
+      await grabAndSavePicture(page, outputPath)
     }
   }
 
-  await context.close()
+  browser.close()
 })()
+
+/**
+ * @param  {any} page
+ * @param  {string} selector
+ * @param  {number} maxTries=3
+ */
+async function tryClick (page, selector, maxTries = 3) {
+  let tryCounter = 0
+
+  while (tryCounter < maxTries) {
+    if (tryCounter >= 1) {
+      await page.waitForTimeout(3000)
+    }
+
+    const selectedElement = await page.$(selector)
+
+    if (selectedElement) {
+      await page.click(selector)
+      break
+    }
+
+    tryCounter++
+  }
+
+  if (tryCounter === maxTries) {
+    const logText = 'tryClick() for selector ' + selector + ' failed.'
+    console.log(logText)
+    throw new Error(logText)
+  }
+
+  await page.waitForTimeout(3000)
+}
+
+function getDictionaryLength (path) {
+  const dir = fs.readdirSync(path)
+  return dir.length
+}
+
+// Scrolls to bottom in order to load all saved images of one album
+async function scrollToBottom (page) {
+  await page.evaluate(async () => {
+    await new Promise((resolve, reject) => {
+      let totalHeight = 0
+      const distance = 100
+      const timer = setInterval(() => {
+        const scrollHeight = document.body.scrollHeight
+        window.scrollBy(0, distance)
+        totalHeight += distance
+
+        if (totalHeight >= scrollHeight) {
+          clearInterval(timer)
+          resolve()
+        }
+      }, 400)
+    })
+  })
+}
+
+async function grabAndSavePicture (page, outputPath) {
+  try {
+    await page.waitForSelector('.KL4Bh > img', { timeout: 10000 })
+
+    const imageUrl = await page.$('.KL4Bh > img')
+    const imageUrlText = await imageUrl.getAttribute('src')
+
+    if (!imageUrlText) {
+      throw new Error('couldn\'t get one picture')
+    }
+
+    console.log('imageUrlText: ', imageUrlText)
+
+    await needle.get(imageUrlText, { output: outputPath + '/' + (getDictionaryLength(outputPath) + '.jpg') })
+
+    const chevronRight = await page.$('.coreSpriteRightChevron')
+
+    if (chevronRight) {
+      await chevronRight.click()
+      await grabAndSavePicture(page, outputPath)
+    }
+  } catch (error) {
+    console.log(error)
+  }
+}
