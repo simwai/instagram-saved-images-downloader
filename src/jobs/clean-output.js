@@ -1,6 +1,6 @@
 const fs = require('fs')
 
-const outputBasePath = '../fetched_images'
+const outputBasePath = '../../fetched_images'
 
 const folders = fs.readdirSync(outputBasePath)
 console.log(folders)

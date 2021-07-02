@@ -7,7 +7,9 @@ const config = require('./config')
 const useragent = randomUseragent.getRandom()
 
 const outputPaths = []
-const albumUrlTexts = [];
+const albumUrlTexts = []
+
+const outputBasePath = '../fetched_images';
 
 (async () => {
   const browser = await chromium.launch({ headless: false, userAgent: useragent })
@@ -64,8 +66,6 @@ const albumUrlTexts = [];
   // $$ returns colleation, $ returns single
   const albums = await page.$$('._7UhW9.LjQVu.qyrsm.h_zdq.uL8Hv')
 
-  const outputBasePath = './fetched_images'
-
   if (!fs.existsSync(outputBasePath)) {
     fs.mkdirSync(outputBasePath)
   }
@@ -94,9 +94,14 @@ const albumUrlTexts = [];
 
   for (let counter = 0; counter < albumUrlTexts.length; counter++) {
     const albumUrlText = 'https://www.instagram.com' + albumUrlTexts[counter]
-
+    console.log(albumUrlText)
     await page.goto(albumUrlText)
-    await page.waitForSelector('.v1Nh3.kIKUG._bz0w > a')
+    try {
+      await page.waitForSelector('.v1Nh3.kIKUG._bz0w > a', { timeout: 20000 })
+    } catch {
+      console.log('warning: couldn\'t get pictures for the album ' + albumUrlTexts[counter])
+      continue
+    }
 
     await scrollToBottom(page)
 
@@ -107,11 +112,14 @@ const albumUrlTexts = [];
     console.log(previewImages)
 
     const outputPath = outputPaths[counter]
-    console.log(outputPaths[counter])
 
     for (const previewImage of previewImages) {
       await page.goto(previewImage)
-      await grabAndSavePicture(page, outputPath)
+      const result = await grabAndSavePicture(page, outputPath)
+
+      if (result === null) {
+        console.log('failed to get one image')
+      }
     }
   }
 
@@ -178,25 +186,89 @@ async function scrollToBottom (page) {
 async function grabAndSavePicture (page, outputPath) {
   try {
     await page.waitForSelector('.KL4Bh > img', { timeout: 10000 })
+  } catch (error) {
+    console.log(error)
+    return null
+  }
 
-    const imageUrl = await page.$('.KL4Bh > img')
-    const imageUrlText = await imageUrl.getAttribute('src')
+  const imageUrl = await page.$('.KL4Bh > img')
 
-    if (!imageUrlText) {
-      throw new Error('couldn\'t get one picture')
-    }
+  if (!imageUrl) return null
 
-    console.log('imageUrlText: ', imageUrlText)
+  const imageUrlText = await imageUrl.getAttribute('src')
 
-    await needle.get(imageUrlText, { output: outputPath + '/' + (getDictionaryLength(outputPath) + '.jpg') })
+  if (!imageUrlText) return null
+
+  console.log('imageUrlText: ', imageUrlText)
+
+  const newImagePath = outputPath + '/' + (getDictionaryLength(outputPath) + '.jpg')
+
+  const response = await needle('get', imageUrlText)
+  const base64 = base64EncodeFromBitmap(response.body)
+  if (!doesImageExist(base64)) {
+    // TODO don't do request twice, convert base64 to bitmap and save it
+    // await needle('get', imageUrlText, { output: newImagePath })
+    // fs.writeFile(newImagePath, base64, 'base64', function (error) {
+    //   console.log(error)
+    // })
+
+    fs.writeFileSync(newImagePath, response.body, error => console.log(error))
 
     const chevronRight = await page.$('.coreSpriteRightChevron')
 
     if (chevronRight) {
       await chevronRight.click()
-      await grabAndSavePicture(page, outputPath)
+      const result = await grabAndSavePicture(page, outputPath)
+
+      if (result === null) {
+        console.log('failed to get one picture from slideshow')
+      }
     }
-  } catch (error) {
-    console.log(error)
+  }
+
+  // function to encode file data to base64 encoded string
+  function base64EncodeFromFile (file) {
+  // read binary data
+    const bitmap = fs.readFileSync(file)
+    // convert binary data to base64 encoded string
+    base64EncodeFromBitmap(bitmap)
+  }
+
+  function base64EncodeFromBitmap (bitmap) {
+  // convert binary data to base64 encoded string
+    const base64 = Buffer.from(bitmap).toString('base64')
+    return base64
+  }
+
+  function doesImageExist (bitmap) {
+    const image2base64 = base64EncodeFromBitmap(bitmap)
+
+    const folders = fs.readdirSync(outputBasePath)
+
+    for (const folder of folders) {
+      const images = fs.readdirSync(outputBasePath + '/' + folder)
+
+      for (const file of images) {
+        const image1base64 = base64EncodeFromFile(outputBasePath + '/' + folder + '/' + file)
+
+        if (image2base64 === image1base64) return true
+      }
+    }
+
+    return false
   }
 }
+
+// function deleteImage (imagePath) {
+//   const folders = fs.readdirSync(outputBasePath)
+
+//   for (const folder of folders) {
+//     const filesToDelete = fs.readdirSync(outputBasePath + '/' + folder)
+
+//     for (const file of filesToDelete) {
+//       if (imagePath === outputBasePath + '/' + folder + '/' + file) {
+//         fs.unlinkSync(outputBasePath + '/' + folder + '/' + file)
+//       }
+//     }
+//   }
+// }

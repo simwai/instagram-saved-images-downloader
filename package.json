@@ -17,12 +17,11 @@
 		"nodemon": "^2.0.7"
 	},
 	"scripts": {
-		"run": "node index.js",
-		"debug": "node --inspect --trace-warnings index.js",
-		"always-debug": "nodemon --inspect --trace-warnings index.js",
+		"run": "node ./src/index.js",
+		"debug": "node --inspect --trace-warnings ./src/index.js",
+		"always-debug": "nodemon --inspect --trace-warnings ./src/index.js",
 		"stop-debug": "taskkill /F /IM node.exe",
-		"lint": "eslint ./*"
+		"lint": "eslint ./src/*"
 	},
-	"author": "",
-	"license": "ISC"
+	"author": "simwai"
 }
