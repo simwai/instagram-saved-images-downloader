@@ -7,7 +7,7 @@
         {
             "type": "pwa-node",
             "request": "launch",
-            "name": "Launch Program",
+            "name": "Launch Debugger",
             "skipFiles": [
                 "<node_internals>/**"
             ],
@@ -16,7 +16,7 @@
         {
             "type": "node",
             "request": "attach",
-            "name": "Node: Nodemon",
+            "name": "Attach Debugger",
             "processId": "${command:PickProcess}",
             "restart": true,
             "protocol": "inspector"

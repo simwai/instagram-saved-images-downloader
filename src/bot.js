@@ -2,19 +2,29 @@ const { chromium } = require('playwright')
 const needle = require('needle')
 const randomUseragent = require('random-useragent')
 const fs = require('fs')
+const path = require('path')
+
+const server = require('./server')
+server.loadServer()
 
 const config = require('./config')
+const { GDriveService } = require('./services/gdrive-service')
+
 const useragent = randomUseragent.getRandom()
 
 const outputPaths = []
 const albumUrlTexts = []
 
-const outputBasePath = '../fetched_images';
+const outputBasePath = path.join(__dirname, '../fetched_images')
+
+let browser
 
 (async () => {
-  const browser = await chromium.launch({ headless: false, userAgent: useragent })
-  const page = await browser.newPage()
-  await page.goto('https://instagram.com//')
+  browser = await chromium.launch({ headless: false, userAgent: useragent })
+  const context = await browser.newContext()
+  const page = await context.newPage()
+
+  await page.goto('https://instagram.com/')
   await page.screenshot({ path: 'screenshots/latest-screenshot.png' })
 
   await page.waitForTimeout(3000)
@@ -56,7 +66,7 @@ const outputBasePath = '../fetched_images';
     return
   }
 
-  await page.click(':nth-match(.Fifk5, 5) img')
+  await page.click('.XrOey:nth-of-type(5) img')
 
   await page.waitForTimeout(3000)
   await page.click('text=Gespeichert')
@@ -72,7 +82,7 @@ const outputBasePath = '../fetched_images';
 
   for (const album of albums) {
     // create album folders
-    const outputFullPath = outputBasePath + '/' + await album.textContent()
+    const outputFullPath = path.join(outputBasePath, '/' + await album.textContent())
 
     if (!fs.existsSync(outputFullPath)) {
       fs.mkdirSync(outputFullPath)
@@ -98,7 +108,7 @@ const outputBasePath = '../fetched_images';
     await page.goto(albumUrlText)
     try {
       await page.waitForSelector('.v1Nh3.kIKUG._bz0w > a', { timeout: 20000 })
-    } catch {
+    } catch (_error) {
       console.log('warning: couldn\'t get pictures for the album ' + albumUrlTexts[counter])
       continue
     }
@@ -106,9 +116,7 @@ const outputBasePath = '../fetched_images';
     await scrollToBottom(page)
 
     // const previewImages = await page.$$('.v1Nh3.kIKUG._bz0w > a')
-    const previewImages = await page.$$eval('.v1Nh3.kIKUG._bz0w > a', (elements) =>
-      elements.map((el) => el.href)
-    )
+    const previewImages = await page.$$eval('.v1Nh3.kIKUG._bz0w > a', (elements) => elements.map(el => el.href))
     console.log(previewImages)
 
     const outputPath = outputPaths[counter]
@@ -117,20 +125,14 @@ const outputBasePath = '../fetched_images';
       await page.goto(previewImage)
       const result = await grabAndSavePicture(page, outputPath)
 
-      if (result === null) {
-        console.log('failed to get one image')
-      }
+      if (result === null) console.log('failed to get one image')
     }
   }
 
   browser.close()
 })()
 
-/**
- * @param  {any} page
- * @param  {string} selector
- * @param  {number} maxTries=3
- */
+// TODO fix bug page context lost
 async function tryClick (page, selector, maxTries = 3) {
   let tryCounter = 0
 
@@ -163,7 +165,7 @@ function getDictionaryLength (path) {
   return dir.length
 }
 
-// Scrolls to bottom in order to load all saved images of one album
+// scrolls to bottom in order to load all saved images of one album
 async function scrollToBottom (page) {
   await page.evaluate(async () => {
     await new Promise((resolve, reject) => {
@@ -201,18 +203,34 @@ async function grabAndSavePicture (page, outputPath) {
 
   console.log('imageUrlText: ', imageUrlText)
 
-  const newImagePath = outputPath + '/' + (getDictionaryLength(outputPath) + '.jpg')
+  const newImagePath = path.join(outputPath, '/' + getDictionaryLength(outputPath) + '.jpg')
 
   const response = await needle('get', imageUrlText)
   const base64 = base64EncodeFromBitmap(response.body)
-  if (!doesImageExist(base64)) {
-    // TODO don't do request twice, convert base64 to bitmap and save it
-    // await needle('get', imageUrlText, { output: newImagePath })
-    // fs.writeFile(newImagePath, base64, 'base64', function (error) {
-    //   console.log(error)
-    // })
 
-    fs.writeFileSync(newImagePath, response.body, error => console.log(error))
+  if (!doesImageExist(base64)) {
+    fs.writeFileSync(newImagePath, response.body)
+
+    const folder = getFolderFromOutputPath(outputPath)
+
+    const gDriveService = new GDriveService()
+    await gDriveService.init(browser)
+
+    let folderId
+    const doesFolderExist = await gDriveService.checkIfFolderExists(folder)
+
+    if (!doesFolderExist) {
+      folderId = await gDriveService.createFolder(folder)
+    } else {
+      folderId = await gDriveService.getFolderId(folder)
+
+      if (!folderId) {
+        // TODO check this
+        throw new Error('no folder id found')
+      }
+    }
+
+    await gDriveService.createFileInFolder(newImagePath, folderId)
 
     const chevronRight = await page.$('.coreSpriteRightChevron')
 
@@ -226,18 +244,21 @@ async function grabAndSavePicture (page, outputPath) {
     }
   }
 
-  // function to encode file data to base64 encoded string
   function base64EncodeFromFile (file) {
   // read binary data
     const bitmap = fs.readFileSync(file)
-    // convert binary data to base64 encoded string
     base64EncodeFromBitmap(bitmap)
   }
 
   function base64EncodeFromBitmap (bitmap) {
-  // convert binary data to base64 encoded string
-    const base64 = Buffer.from(bitmap).toString('base64')
-    return base64
+    if (Buffer.isBuffer(bitmap)) {
+      const base64 = bitmap.toString('base64')
+      return base64
+    } else {
+      // convert binary data to base64 encoded string
+      const base64 = Buffer.from(bitmap).toString('base64')
+      return base64
+    }
   }
 
   function doesImageExist (bitmap) {
@@ -246,10 +267,10 @@ async function grabAndSavePicture (page, outputPath) {
     const folders = fs.readdirSync(outputBasePath)
 
     for (const folder of folders) {
-      const images = fs.readdirSync(outputBasePath + '/' + folder)
+      const files = fs.readdirSync(path.join(outputBasePath, '/' + folder))
 
-      for (const file of images) {
-        const image1base64 = base64EncodeFromFile(outputBasePath + '/' + folder + '/' + file)
+      for (const file of files) {
+        const image1base64 = base64EncodeFromFile(path.join(outputBasePath, '/' + folder + '/' + file))
 
         if (image2base64 === image1base64) return true
       }
@@ -257,6 +278,13 @@ async function grabAndSavePicture (page, outputPath) {
 
     return false
   }
+}
+
+function getFolderFromOutputPath (outputPath) {
+  const split = outputPath.split('\\')
+  const folder = split.pop()
+
+  return folder
 }
 
 // function deleteImage (imagePath) {

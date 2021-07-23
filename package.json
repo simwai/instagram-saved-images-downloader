@@ -2,14 +2,16 @@
 	"name": "instagram-saved-images-downloader",
 	"version": "1.0.0",
 	"description": "",
-	"main": "index.js",
+	"main": "bot.js",
 	"dependencies": {
+		"express": "^4.17.1",
+		"googleapis": "^39.2.0",
 		"needle": "^2.6.0",
 		"playwright": "^1.11.0",
 		"random-useragent": "^0.5.0"
 	},
 	"devDependencies": {
-		"eslint": "^7.29.0",
+		"eslint": "^7.30.0",
 		"eslint-config-standard": "^16.0.3",
 		"eslint-plugin-import": "^2.23.4",
 		"eslint-plugin-node": "^11.1.0",
@@ -17,9 +19,11 @@
 		"nodemon": "^2.0.7"
 	},
 	"scripts": {
-		"run": "node ./src/index.js",
-		"debug": "node --inspect --trace-warnings ./src/index.js",
-		"always-debug": "nodemon --inspect --trace-warnings ./src/index.js",
+		"run": "node ./src/bot.js",
+		"run-server": "node ./src/server/server.js",
+		"debug": "node --inspect --trace-warnings ./src/bot.js",
+		"debug-server": "node --inspect --trace-warnings ./src/server/server.js",
+		"always-debug": "nodemon --inspect --trace-warnings ./src/bot.js",
 		"stop-debug": "taskkill /F /IM node.exe",
 		"lint": "eslint ./src/*"
 	},
