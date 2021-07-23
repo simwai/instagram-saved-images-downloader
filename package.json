@@ -15,15 +15,11 @@
 		"eslint-config-standard": "^16.0.3",
 		"eslint-plugin-import": "^2.23.4",
 		"eslint-plugin-node": "^11.1.0",
-		"eslint-plugin-promise": "^5.1.0",
-		"nodemon": "^2.0.7"
+		"eslint-plugin-promise": "^5.1.0"
 	},
 	"scripts": {
 		"run": "node ./src/bot.js",
-		"run-server": "node ./src/server/server.js",
 		"debug": "node --inspect --trace-warnings ./src/bot.js",
-		"debug-server": "node --inspect --trace-warnings ./src/server/server.js",
-		"always-debug": "nodemon --inspect --trace-warnings ./src/bot.js",
 		"stop-debug": "taskkill /F /IM node.exe",
 		"lint": "eslint ./src/*"
 	},
