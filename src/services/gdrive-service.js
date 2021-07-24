@@ -1,6 +1,9 @@
 const { google } = require('googleapis')
 const fs = require('fs')
 
+const randomUseragent = require('random-useragent')
+const useragent = randomUseragent.getRandom()
+
 const config = require('../config')
 
 class GDriveService {
@@ -21,7 +24,7 @@ class GDriveService {
       auth: config.googleDriveApiToken
     })
 
-    const context = await browser.newContext()
+    const context = await browser.newContext({ headless: config.headless, userAgent: useragent })
     const page = await context.newPage()
 
     await page.goto(url)

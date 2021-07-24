@@ -1,6 +1,6 @@
 const { chromium } = require('playwright')
 const needle = require('needle')
-const randomUseragent = require('random-useragent')
+
 const fs = require('fs')
 const path = require('path')
 
@@ -10,6 +10,7 @@ server.loadServer()
 const config = require('./config')
 const { GDriveService } = require('./services/gdrive-service')
 
+const randomUseragent = require('random-useragent')
 const useragent = randomUseragent.getRandom()
 
 const outputPaths = []
@@ -20,7 +21,7 @@ const outputBasePath = path.join(__dirname, '../fetched_images')
 let browser
 
 (async () => {
-  browser = await chromium.launch({ headless: false, userAgent: useragent })
+  browser = await chromium.launch({ headless: config.headless, userAgent: useragent })
   const context = await browser.newContext()
   const page = await context.newPage()
 
