@@ -37,10 +37,10 @@ let browser
     await page.waitForTimeout(3000)
   }
 
-  await page.fill(':nth-match(input, 1)', config.username)
+  await page.fill('input:nth-of-type(1)', config.username)
 
   await page.waitForTimeout(3000)
-  await page.fill(':nth-match(input, 2)', config.password)
+  await page.fill('input:nth-of-type(1)', config.password)
 
   // TODO save cookies to file, on reload check if cookie works or not
 
