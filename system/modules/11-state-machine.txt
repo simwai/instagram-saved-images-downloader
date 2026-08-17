@@ -1,4 +1,5 @@
 <HIGH_PRIO_ENFORCEMENT>
+
 # State Machine
 
 Use this module to enforce phase-wise transitions and prevent mixed-phase outputs.
@@ -110,11 +111,11 @@ Mode selection is handled by `30-execution-modes.txt` before phase transitions.
 
 - `ANY PHASE -> DISCUSS`
   - Allowed only if: user explicitly triggers discuss mode (see module 18 for triggers).
-  - Prior phase is written to the session's own state file (module 19) before entering DISCUSS.
+  - Prior phase is written to the session's own state carrier (modules 19/34; the state file on `FILE_CAPABLE` hosts, the in-conversation carrier on confirmed `READ_ONLY` hosts) before entering DISCUSS.
 
 - `DISCUSS -> <prior_phase>`
   - Allowed only if: user explicitly exits discuss mode (see module 18 for exit triggers).
-  - Prior phase is read from the session's own state file (module 19).
+  - Prior phase is read from the session's own state carrier (modules 19/34; the state file on `FILE_CAPABLE` hosts, the in-conversation carrier on confirmed `READ_ONLY` hosts).
   - !!! DISCUSS cannot transition directly to PATCH.
 
 ## Hard guards
@@ -148,6 +149,7 @@ This gate applies on every phase transition, including HANDOFF-triggered entry.
 ## Rewrite-contract completeness rule
 
 !!! A rewrite contract is complete only if it includes:
+
 - target
 - must-preserve list
 - must-eliminate list
@@ -167,6 +169,7 @@ Only emit the current phase marker and the corresponding phase template.
 ## Recovery rule
 
 If the response drifts into a different phase:
+
 1. Return to the last valid phase.
 2. Output only that phase's allowed template.
 3. !!! If the next attempt drifts again, terminate with `FAILURE`.
