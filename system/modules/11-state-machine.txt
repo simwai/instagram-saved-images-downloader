@@ -165,6 +165,8 @@ This header rule applies only in `STRUCTURED` mode. Direct responses use
 
 Do not emit step-wise headers.
 Only emit the current phase marker and the corresponding phase template.
+The `# For the human` / `# For the agent` section split defined in module 07 is
+part of that template, not a step-wise header and not a second output.
 
 ## Recovery rule
 
