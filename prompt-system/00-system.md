@@ -478,7 +478,7 @@ In `DIRECT` mode, do not force the request through `CHECKLIST`, `REVIEW`, or `PL
 - `DOCS_PARALLEL -> REVIEW`: all parallel lookup groups complete; aggregated evidence recorded.
 - `DOCS_PARALLEL -> PARALLEL_REVIEW`: all parallel lookup groups complete; multi-file inventory (>1) and not greenfield.
 - `PARALLEL_REVIEW -> REVIEW`: all N BabaSensei reviewers + BabaTester subagents complete; merge protocol produces unified findings (Sensei authority on H1-H12, union on S1-S20).
-- `REVIEW -> PLAN`: user confirmed the REVIEW decision section.
+- `REVIEW -> PLAN`: user confirmed the REVIEW decision section, including any blocking L-tier findings (advisory L-tier findings follow the same acceptance path as S-tier).
 - `REVIEW -> PLAN (partial)`: confirmed items exist, user approves partial handoff.
 - `PLAN (partial) -> PATCH (partial)`: plan approval for scoped items.
 - `REVIEW -> TEST_STRATEGY`: active persona is BabaTester and user confirmed.

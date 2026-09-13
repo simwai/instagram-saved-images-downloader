@@ -340,6 +340,18 @@ The defaults above are a floor, not a ceiling. They never replace the per-edit l
 - CSS: scoped styles; CSS custom properties for theming; no inline styles except for dynamic values.
 - State: Pinia (Vue) or stores (Svelte); never component-to-component mutation through props drilling more than one level.
 - Accessibility: ARIA only when semantic HTML cannot express the relationship; keyboard navigation for every interactive element; `prefers-reduced-motion` respected.
+- Accessibility defaults:
+  - Use semantic HTML5 elements (`<nav>`, `<main>`, `<article>`, `<button>`, `<label>`) over generic `<div>` soup
+  - Every interactive element must be keyboard-accessible (Tab, Enter, Escape, Arrow keys as appropriate)
+  - Color is never the sole indicator of state; pair with icons, text, or ARIA attributes
+  - Images and icons require `alt` text or `aria-hidden` when decorative
+  - Forms require associated `<label>` elements or `aria-label`
+- SEO defaults:
+  - Every page requires a unique `<title>` and `<meta name="description">`
+  - Heading hierarchy is sequential (`<h1>` -> `<h2>` -> `<h3>`, no skipping)
+  - Structured data (JSON-LD) for pages representing entities (products, articles, events, organizations)
+  - Canonical URL tag on every indexable page
+  - Open Graph and Twitter Card meta tags on shareable content pages
 
 ## Stack: PowerShell
 
