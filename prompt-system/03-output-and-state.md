@@ -499,7 +499,7 @@ Build: PASS|FAIL|SKIPPED -- [command] -- [note]
 Smoke: PASS|FAIL|SKIPPED -- [command] -- [note]
 Functional suite: PASS|FAIL|SKIPPED -- [command] -- [note]
 Playwright e2e smoke: PASS|FAIL|SKIPPED -- [command] -- [note] (navigate + click key flows; uses MCP playwright server from fallback ladder)
-Playwright e2e smoke is aggregate-level (H11): it runs once at verdict time, not per batch.
+Playwright e2e smoke is aggregate-level (H11): it runs once at REVIEW verdict and once at the commit/push gate, not per batch.
 Do not invent commands. If none exist, record SKIPPED with reason.
 
 # Decision Needed
