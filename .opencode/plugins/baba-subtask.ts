@@ -12,7 +12,7 @@
 
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
-import { tool, type PluginInput, type Hooks, type ProviderContext, type Config } from "@opencode-ai/plugin";
+import { tool, type PluginInput, type Hooks, type Config } from "@opencode-ai/plugin";
 import type { Part, Message, Event, Model } from "@opencode-ai/sdk";
 
 // ============================================================================
@@ -671,7 +671,7 @@ async function handleSessionIdle(sessionID: string) {
 // Plugin entry
 // ============================================================================
 
-export const babaSubtask = async (input: PluginInput): Promise<Hooks> => {
+export default async (input: PluginInput): Promise<Hooks> => {
   setClient(input.client);
 
   const commandDirs = [
@@ -711,8 +711,12 @@ export const babaSubtask = async (input: PluginInput): Promise<Hooks> => {
 
   return {
     config: async (input: Config) => {
-      input.command ??= {};
-      input.command.subtask = {
+      if (!input || typeof input !== "object") return;
+      const cfg = input as Record<string, unknown>;
+      if (!cfg.command || typeof cfg.command !== "object") {
+        cfg.command = {};
+      }
+      (cfg.command as Record<string, unknown>).subtask = {
         description: "Run a command on the fly, supports subtask features",
         template: "$ARGUMENTS",
         subtask: true,

@@ -56,7 +56,7 @@ function getSessionState(sessionID: string, config: FeedbackConfig): SessionStat
   return initial;
 }
 
-export const AdaptiveTemperaturePlugin: Plugin = async (_ctx, options) => {
+export default async (_ctx: any, options?: Record<string, unknown>): Promise<any> => {
   const config = resolveConfig(options ?? {});
 
   return {
@@ -120,7 +120,7 @@ export const AdaptiveTemperaturePlugin: Plugin = async (_ctx, options) => {
       }),
     },
 
-    "command.execute.before": async (input) => {
+    "command.execute.before": async (input: { command: string; sessionID?: string; arguments?: string }) => {
       const { command, sessionID, arguments: args } = input;
       if (!sessionID || command !== "feedback") return;
 
@@ -140,7 +140,7 @@ export const AdaptiveTemperaturePlugin: Plugin = async (_ctx, options) => {
       }
     },
 
-    "experimental.chat.system.transform": async ({ sessionID, model }, { system }) => {
+    "experimental.chat.system.transform": async ({ sessionID, model }: { sessionID?: string; model?: any }, { system }: { system: string[] }) => {
       if (!sessionID) return;
 
       const state = sessionStates.get(sessionID);
@@ -156,7 +156,7 @@ export const AdaptiveTemperaturePlugin: Plugin = async (_ctx, options) => {
       );
     },
 
-    event: async ({ event }) => {
+    event: async ({ event }: { event: any }) => {
       if (event.type === "session.deleted") {
         const sessionID = (event as any).properties?.sessionID;
         if (sessionID) {
